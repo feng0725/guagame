@@ -13,52 +13,144 @@
 <canvas width="400" height="300" id="my-canvas"></canvas>
 <script>
     let log = console.log.bind(console)
-    let canvas = document.querySelector('#my-canvas')
-    let context = canvas.getContext('2d')
 
-    let x = 100
-    let y = 200
-    let speed = 5
+    let imagFromPath = function (path,) {
+        let img = new Image()
+        img.src = path
+        return img
 
-    let img = new Image()
-    img.src = 'paddle.png'
-    log(img)
-    img.onload = function () {
-        context.drawImage(img, x, y)
     }
 
+    let Paddle = function () {
+        let image = imagFromPath('paddle.png')
+        let o = {
+            image: image,
+            x: 100,
+            y: 250,
 
-    let leftDown = false
-    let rightDown = false
+            speed: 5,
+            moveLeft() {
+                o.x -= o.speed
+            },
+            moveRight() {
+                o.x += o.speed
+            },
+            collide(ball) {
+                let b = ball
+                b.w = ball.image.width
+                b.h = ball.image.height
+                if (b.x + b.w >= o.x && b.x  <= o.x+o.image.width && b.y + b.w >= o.y) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
 
-    window.addEventListener('keydown', function (event) {
-        let k = event.key
-        if (k == 'a') {
-            leftDown = true;
-        } else if (k == 'd') {
-            rightDown = true
+        return o
+    }
+    let Ball = function () {
+        let image = imagFromPath('ball.png', 5, 5)
+        let o = {
+            image: image,
+            x: 150,
+            y: 150,
+            speedX: 5,
+            speedY: 5,
+            fired: false,
+            move() {
+                if (o.fired) {
+                    if (o.x < 0 || o.x > 370) {
+                        o.speedX = -o.speedX
+                    }
+                    if (o.y < 0 || o.y > 270) {
+                        o.speedY = -o.speedY
+                    }
+                    o.x += o.speedX
+                    o.y += o.speedY
+                }
+            },
+            fire() {
+                o.fired = true
+            }
         }
-    })
-    window.addEventListener('keyup', function (event) {
-        let k = event.key
-        if (k == 'a') {
-            leftDown = false;
-        } else if (k == 'd') {
-            rightDown = false
-        }
-    })
+        return o
+    }
 
-    setInterval(function () {
-        // update x and y
-        if (leftDown) {
-            x -= speed
-        } else if (rightDown) {
-            x += speed
+    let GuaGanme = function () {
+        let g = {
+            actions: {},
+            keydowns: {},
         }
+        let canvas = document.querySelector('#my-canvas')
+        let context = canvas.getContext('2d')
+        g.canvas = canvas
+        g.context = context
+
         // draw
-        context.clearRect(0, 0, canvas.width, canvas.height)
-        context.drawImage(img, x, y)
-    }, 1000 / 30)
+        g.drawImage = function (guaImage) {
+            g.context.drawImage(guaImage.image, guaImage.x, guaImage.y)
+
+        }
+        // events
+        window.addEventListener('keydown', function (event) {
+            g.keydowns[event.key] = true
+        })
+        window.addEventListener('keyup', function (event) {
+            g.keydowns[event.key] = false
+        })
+
+        //
+        g.registerAction = function (key, callback) {
+            g.actions[key] = callback
+        }
+
+        // timer
+        setInterval(function () {
+            // events
+            let actions = Object.keys(g.actions)
+            for (let i = 0; i < actions.length; i++) {
+                let key = actions[i];
+                if (g.keydowns[key]) {
+                    // 如果按键被按下,调用注册的action
+                    g.actions[key]()
+                }
+            }
+            // update
+            g.update()
+            // clear
+            context.clearRect(0, 0, canvas.width, canvas.height)
+            // draw
+            g.draw()
+        }, 1000 / 30)
+        return g
+    }
+
+    let __main = function () {
+        let game = GuaGanme();
+        let paddle = Paddle();
+        let ball = Ball();
+
+
+        game.registerAction('a', paddle.moveLeft)
+        game.registerAction('d', paddle.moveRight)
+        game.registerAction('f', ball.fire)
+
+        game.update = function () {
+            ball.move()
+            // 判断香蕉
+            if (paddle.collide(ball)) {
+                ball.speedY *= -1
+            }
+
+        }
+        game.draw = function () {
+            game.drawImage(paddle)
+            game.drawImage(ball)
+        }
+
+    }
+    __main()
 </script>
 </body>
 </html>
